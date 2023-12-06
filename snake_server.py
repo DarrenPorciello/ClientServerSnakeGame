@@ -5,46 +5,59 @@ import pickle
 from snake import SnakeGame
 import uuid
 import time
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import serialization, hashes
-from cryptography.hazmat.primitives.asymmetric import rsa, padding
+import math
+import random
+import json
 
-def generate_key_pair():
-    private_key = rsa.generate_private_key(
-        public_exponent=65537,
-        key_size=2048,
-        backend=default_backend()
-    )
-    public_key = private_key.public_key()
+def is_prime(num):
+    if num < 2:
+        return False
+    for i in range(2, int(math.sqrt(num)) + 1):
+        if num % i == 0:
+            return False
+    return True
 
-    return private_key, public_key
+def gcd(a, b):
+    while b:
+        a, b = b, a % b
+    return a
 
-def encrypt(public_key, plaintext):
-    ciphertext = public_key.encrypt(
-        plaintext.encode(),
-        padding.OAEP(
-            mgf=padding.MGF1(algorithm=hashes.SHA256()),
-            algorithm=hashes.SHA256(),
-            label=None
-        )
-    )
-    return ciphertext
+def mod_inverse(a, m):
+    m0, x0, x1 = m, 0, 1
+    while a > 1:
+        q = a // m
+        m, a = a % m, m
+        x0, x1 = x1 - q * x0, x0
+    return x1 + m0 if x1 < 0 else x1
 
-def decrypt(private_key, ciphertext):
-    plaintext = private_key.decrypt(
-        ciphertext,
-        padding.OAEP(
-            mgf=padding.MGF1(algorithm=hashes.SHA256()),
-            algorithm=hashes.SHA256(),
-            label=None
-        )
-    )
-    return plaintext.decode()
+def generate_keypair(bits):
+    p = q = 0
+    while not is_prime(p):
+        p = random.getrandbits(bits)
+    while not is_prime(q) or q == p:
+        q = random.getrandbits(bits)
+    n = p * q
+    phi = (p - 1) * (q - 1)
+    
+    e = 65537  # Commonly used public exponent
+    d = mod_inverse(e, phi)
+    
+    return (e, n), (d, n)
 
+def encrypt(message, public_key):
+    e, n = public_key
+    encrypted = [pow(ord(char), e, n) for char in message]
+    return encrypted
 
+def decrypt(ciphertext, private_key):
+    d, n = private_key
+    decrypted = [chr(pow(char, d, n)) for char in ciphertext]
+    return ''.join(decrypted)
 server = "localhost"
 port = 5555
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+# Generate key pair
+server_public_key, server_private_key = generate_keypair(8)
 
 counter = 0
 rows = 20
@@ -129,8 +142,20 @@ def client_thread(conn, addr):
 
 if __name__ == "__main__":
     clients = []
+    client_public_keys = []
+   
     while True:
         conn, addr = s.accept()
         clients.append(conn)
+        data = conn.recv(500).decode()
+
+        # Convert the string back to a tuple
+        restored_tuple = json.loads(data)
+        client_public_keys.append(restored_tuple)
+        
+        #Send the client the servers public key
+        tuple_as_string = json.dumps(server_public_key) 
+        conn.send(tuple_as_string.encode())
+        
         print("Connected to:", addr)
         start_new_thread(client_thread, (conn, addr))

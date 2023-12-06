@@ -3,41 +3,54 @@ import pygame
 from network import Network
 import time
 import random
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import serialization, hashes
-from cryptography.hazmat.primitives.asymmetric import rsa, padding
+import math
+import pickle
+import json
 
-def generate_key_pair():
-    private_key = rsa.generate_private_key(
-        public_exponent=65537,
-        key_size=2048,
-        backend=default_backend()
-    )
-    public_key = private_key.public_key()
+def is_prime(num):
+    if num < 2:
+        return False
+    for i in range(2, int(math.sqrt(num)) + 1):
+        if num % i == 0:
+            return False
+    return True
 
-    return private_key, public_key
+def gcd(a, b):
+    while b:
+        a, b = b, a % b
+    return a
 
-def encrypt(public_key, plaintext):
-    ciphertext = public_key.encrypt(
-        plaintext.encode(),
-        padding.OAEP(
-            mgf=padding.MGF1(algorithm=hashes.SHA256()),
-            algorithm=hashes.SHA256(),
-            label=None
-        )
-    )
-    return ciphertext
+def mod_inverse(a, m):
+    m0, x0, x1 = m, 0, 1
+    while a > 1:
+        q = a // m
+        m, a = a % m, m
+        x0, x1 = x1 - q * x0, x0
+    return x1 + m0 if x1 < 0 else x1
 
-def decrypt(private_key, ciphertext):
-    plaintext = private_key.decrypt(
-        ciphertext,
-        padding.OAEP(
-            mgf=padding.MGF1(algorithm=hashes.SHA256()),
-            algorithm=hashes.SHA256(),
-            label=None
-        )
-    )
-    return plaintext.decode()
+def generate_keypair(bits):
+    p = q = 0
+    while not is_prime(p):
+        p = random.getrandbits(bits)
+    while not is_prime(q) or q == p:
+        q = random.getrandbits(bits)
+    n = p * q
+    phi = (p - 1) * (q - 1)
+    
+    e = 65537  # Commonly used public exponent
+    d = mod_inverse(e, phi)
+    
+    return (e, n), (d, n)
+
+def encrypt(message, public_key):
+    e, n = public_key
+    encrypted = [pow(ord(char), e, n) for char in message]
+    return encrypted
+
+def decrypt(ciphertext, private_key):
+    d, n = private_key
+    decrypted = [chr(pow(char, d, n)) for char in ciphertext]
+    return ''.join(decrypted)
 
 
 playerID = random.randint(1, 100000)
@@ -46,8 +59,7 @@ width = 500
 height = 500
 rows = 20 
 
-# Example usage
-client_private_key, client_public_key = generate_key_pair()
+
 
 rgb_colors = {
     "red" : (255, 0, 0),
@@ -105,7 +117,20 @@ def main():
     win = pygame.display.set_mode((width,height))
     
     n = Network()
+    #Send key to server
 
+    # Generate key pair
+    public_key, private_key = generate_keypair(8)
+    print(public_key, private_key)
+    tuple_as_string = json.dumps(public_key) 
+    ServerTestkey = n.send(tuple_as_string, receive=True)
+    print(ServerTestkey)
+    
+    # Convert the string back to a tuple
+    restored_tuple = json.loads(tuple_as_string)
+    print(restored_tuple)
+    
+    
     flag = True
     
     #Send the client public key to the server
