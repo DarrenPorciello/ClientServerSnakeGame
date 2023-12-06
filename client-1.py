@@ -3,6 +3,42 @@ import pygame
 from network import Network
 import time
 import random
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization, hashes
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
+
+def generate_key_pair():
+    private_key = rsa.generate_private_key(
+        public_exponent=65537,
+        key_size=2048,
+        backend=default_backend()
+    )
+    public_key = private_key.public_key()
+
+    return private_key, public_key
+
+def encrypt(public_key, plaintext):
+    ciphertext = public_key.encrypt(
+        plaintext.encode(),
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None
+        )
+    )
+    return ciphertext
+
+def decrypt(private_key, ciphertext):
+    plaintext = private_key.decrypt(
+        ciphertext,
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None
+        )
+    )
+    return plaintext.decode()
+
 
 playerID = random.randint(1, 100000)
 
@@ -10,6 +46,8 @@ width = 500
 height = 500
 rows = 20 
 
+# Example usage
+client_private_key, client_public_key = generate_key_pair()
 
 rgb_colors = {
     "red" : (255, 0, 0),
@@ -70,6 +108,8 @@ def main():
 
     flag = True
     
+    #Send the client public key to the server
+    #n.send()
     
     while flag:
         
@@ -96,18 +136,23 @@ def main():
                         pos = n.send("down", receive = True)
                     elif event.key == pygame.K_SPACE:
                         pos = n.send("reset", receive = True)
-                    #Send messages, must add ahdnling for recieving of messages
+                    #Send messages
                     elif event.key == pygame.K_z:
                         chatMessage = f"Player {playerID}: Congratulations"
-                        chat = n.send(chatMessage, receive=True)
+                        n.send(chatMessage)
+                        print(chatMessage)
 
                     elif event.key == pygame.K_x:
                         chatMessage = f"Player {playerID}: It works!"
-                        chat = n.send(chatMessage, receive=True)
+                        n.send(chatMessage)
+                        print(chatMessage)
 
                     elif event.key == pygame.K_c:
                         chatMessage = f"Player {playerID}: Ready?"
-                        chat = n.send(chatMessage, receive=True)
+                        n.send(chatMessage)
+                        print(chatMessage)
+
+                    
                         
                         
         else : 
