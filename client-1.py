@@ -2,6 +2,9 @@ import numpy as np
 import pygame 
 from network import Network
 import time
+import random
+
+playerID = random.randint(1, 100000)
 
 width = 500
 height = 500
@@ -72,6 +75,8 @@ def main():
         
         events = pygame.event.get()
         pos = None 
+        chat = None
+        ignore = False
         if len(events) > 0 :
             
             for event in events : 
@@ -91,14 +96,29 @@ def main():
                         pos = n.send("down", receive = True)
                     elif event.key == pygame.K_SPACE:
                         pos = n.send("reset", receive = True)
+                    #Send messages, must add ahdnling for recieving of messages
+                    elif event.key == pygame.K_z:
+                        chatMessage = f"Player {playerID}: Congratulations"
+                        chat = n.send(chatMessage, receive=True)
+
+                    elif event.key == pygame.K_x:
+                        chatMessage = f"Player {playerID}: It works!"
+                        chat = n.send(chatMessage, receive=True)
+
+                    elif event.key == pygame.K_c:
+                        chatMessage = f"Player {playerID}: Ready?"
+                        chat = n.send(chatMessage, receive=True)
+                        
+                        
         else : 
             pos = n.send("get", receive = True)
         
-        
+
+            
         snacks, players = [], []
         
-        if pos is not None : 
-            print(pos)
+        if pos is not None and "|" in pos: 
+            #print(pos)
             raw_players = pos.split("|")[0].split("**")
             raw_snacks = pos.split("|")[1].split("**")
 
@@ -125,6 +145,10 @@ def main():
             for i in range(len(raw_snacks)) :
                 nums = raw_snacks[i].split(')')[0].split('(')[1].split(',')
                 snacks.append((int(nums[0]), int(nums[1])))
+
+        else:
+            if pos is not None:
+                print(pos)
             
 
         draw(win, players, snacks)

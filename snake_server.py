@@ -36,6 +36,9 @@ rgb_colors = {
 }
 rgb_colors_list = list(rgb_colors.values())
 
+def broadcast(message):
+    for client in clients:
+        client.send(message.encode())
 
 def game_thread():
     global game, moves_queue, game_state, last_move_timestamp
@@ -65,7 +68,7 @@ def client_thread(conn, addr):
             print("No data received from client")
             break
         elif data == "get":
-            print("Received get")
+            #print("Received get")
             pass
         elif data == "quit":
             print("Received quit")
@@ -76,6 +79,12 @@ def client_thread(conn, addr):
         elif data in ["up", "down", "left", "right"]:
             move = data
             moves_queue.add((unique_id, move))
+        elif "Congratulations" in data:
+            broadcast(data)
+        elif "works" in data:
+            broadcast(data)
+        elif "Ready" in data:
+            broadcast(data)
         else:
             print("Invalid data received from client:", data)
 
@@ -83,7 +92,9 @@ def client_thread(conn, addr):
 
 
 if __name__ == "__main__":
+    clients = []
     while True:
         conn, addr = s.accept()
+        clients.append(conn)
         print("Connected to:", addr)
         start_new_thread(client_thread, (conn, addr))
