@@ -6,6 +6,7 @@ import random
 import math
 import pickle
 import json
+import rsa
 
 def is_prime(num):
     if num < 2:
@@ -120,15 +121,21 @@ def main():
     #Send key to server
 
     # Generate key pair
-    public_key, private_key = generate_keypair(8)
+    public_key, private_key = rsa.newkeys(1024)
+    public_partner = False
     print(public_key, private_key)
-    tuple_as_string = json.dumps(public_key) 
-    ServerTestkey = n.send(tuple_as_string, receive=True)
+    #tuple_as_string = json.dumps(public_key) 
+
+    #Send public key
+    ServerTestkey = n.send(public_key.save_pkcs1("PEM"), receive=True)
     print(ServerTestkey)
     
+
+    #Handle recieved ServerKey
+    
     # Convert the string back to a tuple
-    restored_tuple = json.loads(tuple_as_string)
-    print(restored_tuple)
+    #restored_tuple = json.loads(tuple_as_string)
+    #print(restored_tuple)
     
     
     flag = True

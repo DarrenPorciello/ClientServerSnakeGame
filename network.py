@@ -20,12 +20,14 @@ class Network:
         except:
             print("Unable to connect to server")
 
-    def send(self, data, receive = False):
+    def send(self, data, receive=False):
         try:
-            self.client.send(str.encode(data))
-            if receive : 
+            if isinstance(data, str):
+                data = str.encode(data)
+            self.client.send(data)
+            if receive:
                 return self.client.recv(2048).decode()
-            else : 
+            else:
                 return None
         except socket.error as e:
             print(e)

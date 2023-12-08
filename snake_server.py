@@ -8,6 +8,7 @@ import time
 import math
 import random
 import json
+import rsa
 
 def is_prime(num):
     if num < 2:
@@ -57,7 +58,7 @@ server = "localhost"
 port = 5555
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 # Generate key pair
-server_public_key, server_private_key = generate_keypair(8)
+#server_public_key, server_private_key = generate_keypair(8)
 
 counter = 0
 rows = 20
@@ -147,15 +148,19 @@ if __name__ == "__main__":
     while True:
         conn, addr = s.accept()
         clients.append(conn)
-        data = conn.recv(500).decode()
+        public_key, private_key = rsa.newkeys(1024)
+        public_partner = False
+
+        clientPublicKey = conn.recv(500).decode()
+        print(clientPublicKey)
 
         # Convert the string back to a tuple
-        restored_tuple = json.loads(data)
-        client_public_keys.append(restored_tuple)
+        #restored_tuple = json.loads(data)
+        client_public_keys.append(clientPublicKey)
         
         #Send the client the servers public key
-        tuple_as_string = json.dumps(server_public_key) 
-        conn.send(tuple_as_string.encode())
+        #tuple_as_string = json.dumps(server_public_key) 
+        conn.send(public_key.save_pkcs1("PEM"))
         
         print("Connected to:", addr)
         start_new_thread(client_thread, (conn, addr))
