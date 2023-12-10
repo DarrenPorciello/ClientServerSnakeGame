@@ -20,6 +20,7 @@ class Network:
         except:
             print("Unable to connect to server")
 
+
     def send(self, data, receive=False):
         try:
             if isinstance(data, str):
@@ -31,6 +32,17 @@ class Network:
                 return None
         except socket.error as e:
             print(e)
+
+#    def send(self, data, receive = False):
+#        try:
+#            self.client.send(str.encode(data))
+#            if receive : 
+#                return self.client.recv(2048).decode()
+#            else : 
+#                return None
+#        except socket.error as e:
+#            print(e)
+
     
     def recv(self) : 
         # receive with timeout 

@@ -10,50 +10,8 @@ import random
 import json
 import rsa
 
-def is_prime(num):
-    if num < 2:
-        return False
-    for i in range(2, int(math.sqrt(num)) + 1):
-        if num % i == 0:
-            return False
-    return True
 
-def gcd(a, b):
-    while b:
-        a, b = b, a % b
-    return a
 
-def mod_inverse(a, m):
-    m0, x0, x1 = m, 0, 1
-    while a > 1:
-        q = a // m
-        m, a = a % m, m
-        x0, x1 = x1 - q * x0, x0
-    return x1 + m0 if x1 < 0 else x1
-
-def generate_keypair(bits):
-    p = q = 0
-    while not is_prime(p):
-        p = random.getrandbits(bits)
-    while not is_prime(q) or q == p:
-        q = random.getrandbits(bits)
-    n = p * q
-    phi = (p - 1) * (q - 1)
-    
-    e = 65537  # Commonly used public exponent
-    d = mod_inverse(e, phi)
-    
-    return (e, n), (d, n)
-
-def encrypt(message, public_key):
-    e, n = public_key
-    encrypted = [pow(ord(char), e, n) for char in message]
-    return encrypted
-
-def decrypt(ciphertext, private_key):
-    d, n = private_key
-    decrypted = [chr(pow(char, d, n)) for char in ciphertext]
-    return ''.join(decrypted)
 server = "localhost"
 port = 5555
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -110,7 +68,10 @@ def client_thread(conn, addr):
     start_new_thread(game_thread, ())
 
     while True:
+        #Need to tell nto to decode ahead of time
+
         data = conn.recv(500).decode()
+        #print(data)
         conn.send(game_state.encode())
 
         move = None
@@ -129,14 +90,33 @@ def client_thread(conn, addr):
         elif data in ["up", "down", "left", "right"]:
             move = data
             moves_queue.add((unique_id, move))
-        elif "Congratulations" in data:
-            broadcast(data)
-        elif "works" in data:
-            broadcast(data)
-        elif "Ready" in data:
-            broadcast(data)
+
+        elif 'Control' in data:
+            #print("control received")
+            data2 = conn.recv(500)
+            messagetosend = rsa.decrypt(data2, private_key)
+            #broadcast(decrypteddata)
+            #print(messagetosend.decode())
+            checker = messagetosend.decode()
+            if "Congr" in checker:
+                print("hi")
+                #messagetosend = rsa.decrypt(data2, private_key)
+                #print(messagetosend)
+                broadcast(checker)
+            elif "works" in checker:
+                #messagetosend = rsa.decrypt(data2, private_key)
+                #print(messagetosend)
+                broadcast(checker)
+            elif "Ready" in checker:
+                #messagetosend = rsa.decrypt(data2, private_key)
+                #print(messagetosend)
+                broadcast(checker)
+        
         else:
             print("Invalid data received from client:", data)
+
+        
+            
 
     conn.close()
 
@@ -144,15 +124,19 @@ def client_thread(conn, addr):
 if __name__ == "__main__":
     clients = []
     client_public_keys = []
-   
+    public_key, private_key = rsa.newkeys(1024)
+    #print("PrivateKey: ", private_key)
+    #print("PublicKey: ", public_key)
+    
     while True:
         conn, addr = s.accept()
         clients.append(conn)
-        public_key, private_key = rsa.newkeys(1024)
+        
         public_partner = False
-
+        #clientPublicKey = conn.recv(500).decode()
+        #print(clientPublicKey)
         clientPublicKey = conn.recv(500).decode()
-        print(clientPublicKey)
+        #print("RECEIVED CLIENT PUBLIC KEY", clientPublicKey)
 
         # Convert the string back to a tuple
         #restored_tuple = json.loads(data)
@@ -162,5 +146,5 @@ if __name__ == "__main__":
         #tuple_as_string = json.dumps(server_public_key) 
         conn.send(public_key.save_pkcs1("PEM"))
         
-        print("Connected to:", addr)
+        #print("Connected to:", addr)
         start_new_thread(client_thread, (conn, addr))
